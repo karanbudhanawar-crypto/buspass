@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phaltan College of Engineering - Bus Pass Generator</title>
+    <style>
+        /* --- CSS Styling Section --- */
+        :root {
+            --primary-color: #003366; /* Deep Blue */
+            --secondary-color: #d32f2f; /* Red Accent */
+            --background-color: #f4f7fc;
+            --container-bg: #ffffff;
+            --border-color: #d1d9e6;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--background-color);
+            margin: 0;
+            padding: 25px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 450px;
+            background: var(--container-bg);
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+            margin-bottom: 25px;
+        }
+
+        h1 {
+            color: var(--primary-color);
+            text-align: center;
+            margin: 0 0 1.5rem 0;
+            font-size: 1.8em;
+        }
+
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #333;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+
+        input[type="file"] {
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        
+        #priceDisplay, #paymentSection {
+            text-align: center;
+            padding: 15px;
+            background-color: #e0f7fa;
+            border: 1px solid #00bcd4;
+            border-radius: 8px;
+            font-size: 1.1em;
+            font-weight: bold;
+            color: var(--primary-color);
+            margin-top: 15px;
+        }
+
+        #paymentSection {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 20px;
+            background-color: #f0fdf4;
+            border-color: #4ade80;
+        }
+
+        #qrCodeImage {
+            width: 150px; 
+            height: 150px; 
+            margin: 10px 0;
+            border: 2px solid var(--primary-color);
+            border-radius: 4px;
+            object-fit: contain; 
+            background-color: white; 
+        }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        #generateButton {
+            background-color: var(--primary-color);
+            color: white;
+            margin-top: 1rem;
+        }
+
+        #printButton {
+            background-color: var(--secondary-color);
+            color: white;
+            margin-top: 1rem;
+        }
+
+        /* Map and Pass styles */
+        #map-container { margin-top: 1rem; margin-bottom: 1.25rem; }
+        #map { height: 300px; width: 100%; border-radius: 8px; border: 1px solid var(--border-color); }
+        #bus-pass-container { margin-top: 2rem; display: none; }
+        #bus-pass { width: 320px; border: 1px solid var(--border-color); background: #fff; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); padding: 20px; text-align: center; }
+        .pass-header { text-align: center; margin-bottom: 15px; border-bottom: 2px solid var(--secondary-color); padding-bottom: 10px; }
+        .pass-header h2 { margin: 0; font-size: 1.1em; color: var(--primary-color); }
+        .pass-header p { margin: 2px 0 0 0; font-size: 0.8em; color: #666; }
+        #passPhoto { width: 100px; height: 100px; object-fit: cover; border-radius: 50%; border: 3px solid var(--primary-color); margin-bottom: 15px; }
+        .pass-details { text-align: left; font-size: 0.9em; }
+        .pass-details p { margin: 8px 0; }
+        .pass-details span { font-weight: 600; color: #000; }
+
+        /* Print-specific styles */
+        @media print {
+            body { padding: 0; margin: 0; }
+            .container { box-shadow: none; margin: 0; padding: 0; border: none; }
+            .form-container, #printButton, #paymentSection { display: none; }
+            #bus-pass-container { display: block !important; margin: 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container form-container">
+        <h1>Phaltan Engineering College<br>Bus Pass Generator</h1>
+       <form action="save.php" method="POST" enctype="multipart/form-data">
+
+
+            <div class="form-group">
+                <label for="studentName">Student Full Name</label>
+                <input type="text" id="studentName" name="studentName" placeholder="e.g., Anjali Deshmukh" required>
+            </div>
+
+            <div class="form-group">
+                <label for="startPoint">Starting Point / College Campus (Fixed)</label>
+                <input type="text" id="startPoint" name="startPoint" placeholder="College of Engineering, Phaltan" readonly required>
+            </div>
+            
+            <div class="form-group">
+                <label for="destinationStop">Select Your Destination Stop</label>
+                <select id="destinationStop" name="destinationStop" required>
+                    <option value="" data-lat="" data-lng="" data-zone="1.0">-- Select a Village Stop --</option>
+                    <option value="Phaltan Bus Stop" data-lat="17.9945" data-lng="74.4379" data-zone="1.0">1. Phaltan Bus Stop</option>
+                    <option value="Vidani" data-lat="17.9234" data-lng="74.4567" data-zone="1.2">2. Vidani</option>
+                    <option value="Pimparad" data-lat="17.8821" data-lng="74.3891" data-zone="1.5">3. Pimparad</option>
+                    <option value="Vajegoan" data-lat="18.0410" data-lng="74.4750" data-zone="1.5">4. Vajegoan</option>
+                    <option value="Barad" data-lat="17.9650" data-lng="74.3200" data-zone="2.0">5. Barad</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="endPoint">**Selected Destination Stop Name**</label>
+                <input type="text" id="endPoint" name="endPoint" placeholder="Destination will be set automatically" readonly required>
+            </div>
+            <div class="form-group" id="map-container">
+                <label>...Map View (Marker moves with selection)</label>
+                <div id="map"></div>
+            </div>
+            
+            <div class="form-group">
+                <label for="routeZone">Select Route/Fare Zone</label>
+                <select id="routeZone" name="routeZone" required>
+                    <option value="1.0">Zone 1 (Local/Short Distance)</option>
+                    <option value="1.2">Zone 2 (Medium Distance)</option>
+                    <option value="1.5">Zone 3 (Long Distance)</option>
+                    <option value="2.0">Zone 4 (Very Long Route)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="passDuration">Pass Duration</label>
+                <select id="passDuration" name="passDuration" required>
+                    <option value="1">1 Month</option>
+                    <option value="3">3 Months (Quarterly)</option>
+                    <option value="6">6 Months (Half-Yearly)</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="manualPassPrice">Manual Pass Price (Overrides Calculated Price)</label>
+                <input type="number" id="manualPassPrice" name="manualPassPrice" placeholder="e.g., 2400 (if calculated price is incorrect)" min="0">
+            </div>
+
+            <div class="form-group">
+                <div id="priceDisplay">
+                    Calculated Price: <span id="finalPrice">₹0</span>
+                </div>
+                <input type="hidden" id="passPrice" name="passPrice" value="0">
+            </div>
+
+            <div class="form-group">
+                <label for="studentPhoto">Upload Your Photo</label>
+                <input type="file" id="studentPhoto" name="studentPhoto" accept="image/*" required>
+            </div>
+            
+            <button type="submit" id="generateButton">Generate My Bus Pass</button>
+        </form>
+    </div>
+
+    <div class="container" id="bus-pass-container">
+        
+        <div id="bus-pass">
+            <div class="pass-header">
+                <h2>COLLEGE OF ENGINEERING, PHALTAN</h2>
+                <p>Official Student Bus Pass</p>
+            </div>
+            
+            <img id="passPhoto" src="" alt="Student Photo">
+
+            <div class="pass-details">
+                <p>Name: <span id="passName"></span></p>
+                <p>From: <span id="passStartPoint"></span></p>
+                <p>To: <span id="passEndPoint"></span></p>
+                <p>Pass ID: <span id="passId"></span></p>
+                <p>Price Paid: <span id="passPriceDisplay"></span></p>
+                <p>Valid Upto: <span id="passValidity"></span></p>
+            </div>
+        </div>
+        
+        <div id="paymentSection">
+            <p style="margin: 0;">Scan to Pay: <strong id="paymentAmount">₹0</strong></p>
+            
+            <img id="qrCodeImage" src="C:\Users\PCC\OneDrive\Desktop\WhatsApp Image 2025-10-01 at 10.46.41_1d9788ea.jpg" alt="PhonePe UPI QR Code">
+            
+            <p style="font-size: 0.8em; margin: 5px 0 0 0;">(Scan this QR code using PhonePe to complete payment.)</p>
+        </div>
+        
+        <button id="printButton" onclick="window.print()">Print Pass</button>
+    </div>
+    
+    <script>
+        // --- JavaScript Logic Section ---
+
+        // Form inputs
+        const passForm = document.getElementById('pass-form');
+        const passContainer = document.getElementById('bus-pass-container');
+        const passDurationSelect = document.getElementById('passDuration');
+        const manualPriceInput = document.getElementById('manualPassPrice');
+        const routeZoneSelect = document.getElementById('routeZone');
+        const destinationStopSelect = document.getElementById('destinationStop'); // **NEW**
+        const passPriceHidden = document.getElementById('passPrice');
+        const finalPriceDisplay = document.getElementById('finalPrice');
+        
+        const studentNameInput = document.getElementById('studentName');
+        const startPointInput = document.getElementById('startPoint');
+        const endPointInput = document.getElementById('endPoint');
+        const passPhoto = document.getElementById('passPhoto');
+        const passName = document.getElementById('passName');
+        const passStartPoint = document.getElementById('passStartPoint');
+        const passEndPoint = document.getElementById('passEndPoint');
+        const passPriceDisplay = document.getElementById('passPriceDisplay');
+        const passId = document.getElementById('passId');
+        const passValidity = document.getElementById('passValidity');
+        const paymentAmountDisplay = document.getElementById('paymentAmount');
+
+        let photoDataUrl = null;
+        let map;
+        let startMarker, endMarker; // geocoder is no longer needed for destination
+
+        // Base Configuration for Value-Wise Pricing
+        const BASE_MONTHLY_RATE = 400; // Base rate per month for the shortest distance (Zone 1)
+        const DISCOUNTS = {
+            '1': 1.0, 
+            '3': 0.90, // 10% discount
+            '6': 0.80  // 20% discount
+        };
+        
+        // College Location/Address
+        const collegeLocation = { lat: 17.95829, lng: 74.41272 }; 
+        const collegeAddressDefault = "College of Engineering, Phaltan (S)";
+
+
+        // Function to update the price based on Route Zone and Duration
+        function updatePrice() {
+            const manualPrice = parseFloat(manualPriceInput.value);
+            let finalPrice;
+
+            if (!isNaN(manualPrice) && manualPrice > 0) {
+                // 1. MANUAL OVERRIDE
+                finalPrice = manualPrice;
+                finalPriceDisplay.textContent = `₹${finalPrice} (Manual)`;
+                finalPriceDisplay.style.color = 'var(--secondary-color)';
+            } else {
+                // 2. VALUE-WISE CALCULATION
+                const durationMonths = parseInt(passDurationSelect.value, 10);
+                const routeMultiplier = parseFloat(routeZoneSelect.value);
+                const discountFactor = DISCOUNTS[durationMonths];
+
+                // Formula: Base Rate * Route Multiplier * Months * Discount
+                let calculatedPrice = BASE_MONTHLY_RATE * routeMultiplier * durationMonths * discountFactor;
+
+                // Round to the nearest whole rupee
+                finalPrice = Math.round(calculatedPrice); 
+                
+                finalPriceDisplay.textContent = `₹${finalPrice}`;
+                finalPriceDisplay.style.color = 'var(--primary-color)';
+            }
+            
+            passPriceHidden.value = finalPrice;
+            
+            // Update the payment section amount immediately
+            if (paymentAmountDisplay) {
+                 paymentAmountDisplay.textContent = `₹${finalPrice}`;
+            }
+        }
+        
+        // **NEW FUNCTION: Update fields and map based on village selection**
+        function updateDestinationFromSelection() {
+            const selectedOption = destinationStopSelect.options[destinationStopSelect.selectedIndex];
+            const stopName = selectedOption.value;
+            const lat = selectedOption.getAttribute('data-lat');
+            const lng = selectedOption.getAttribute('data-lng');
+            const zone = selectedOption.getAttribute('data-zone');
+            
+            if (stopName) {
+                endPointInput.value = stopName;
+                routeZoneSelect.value = zone;
+                updatePrice(); // Recalculate price with new zone
+
+                if (map && lat && lng) {
+                    const latLng = { lat: parseFloat(lat), lng: parseFloat(lng) };
+                    placeEndMarker(latLng);
+                    map.setCenter(latLng); // Center map on the new destination
+                }
+            } else {
+                // If '-- Select a Village Stop --' is selected
+                endPointInput.value = '';
+                routeZoneSelect.value = '1.0'; // Default back to Zone 1
+                updatePrice();
+                if (endMarker) {
+                    endMarker.setMap(null); // Remove the end marker
+                }
+                map.setCenter(collegeLocation);
+            }
+        }
+
+        // Listeners for dynamic updates
+        document.getElementById('passDuration').addEventListener('change', updatePrice);
+        manualPriceInput.addEventListener('input', updatePrice);
+        // routeZoneSelect.addEventListener('change', updatePrice); // Keep this if manual zone change is allowed
+        destinationStopSelect.addEventListener('change', updateDestinationFromSelection); // **NEW LISTENER**
+
+
+        // Make initMap a global function for the Google Maps API callback
+        window.initMap = initMap;
+        
+        // --- Map Functions ---
+        function initMap() {
+            // geocoder is removed as destination is selected via dropdown
+            map = new google.maps.Map(document.getElementById("map"), {
+                center: collegeLocation,
+                zoom: 12, // Adjusted zoom level to show the area
+            });
+
+            startMarker = new google.maps.Marker({
+                position: collegeLocation,
+                map,
+                title: collegeAddressDefault,
+                label: 'S',
+            });
+
+            document.getElementById('startPoint').value = collegeAddressDefault;
+            document.getElementById('passStartPoint').textContent = collegeAddressDefault;
+            
+            // Initial call to set the map marker based on the default selected destination (if any)
+            updateDestinationFromSelection();
+            
+            // REMOVED: map.addListener("click", ...) to force selection from the dropdown
+        }
+
+        // Simpler placeEndMarker function
+        function placeEndMarker(latLng) {
+            if (endMarker) {
+                endMarker.setMap(null);
+            }
+            endMarker = new google.maps.Marker({
+                position: latLng,
+                map,
+                label: 'E',
+            });
+        }
+        // --- End Map Functions ---
+
+
+        // Photo handling
+        document.getElementById('studentPhoto').addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    photoDataUrl = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+        
+        // Main function that runs when the form is submitted
+        passForm.addEventListener('submit', (event) => {
+            // --- Start of Replacement Code Block ---
+
+// Function to generate a simple Pass ID (Used by both client and server)
+function generatePassId() {
+    const randomId = Math.floor(1000 + Math.random() * 9000);
+    return `COEP-${randomId}`;
+}
+
+// Function to calculate Validity Date (Used by both client and server)
+function calculateValidityDate(duration) {
+    const currentDate = new Date();
+    const expiryDate = new Date();
+    // More robust way to calculate expiry date (sets to the last day of the final month)
+    expiryDate.setMonth(currentDate.getMonth() + duration + 1, 0); 
+    return `${expiryDate.getDate().toString().padStart(2, '0')}-${(expiryDate.getMonth() + 1).toString().padStart(2, '0')}-${expiryDate.getFullYear()}`;
+}
+
+
+// New/Updated Main function that runs when the form is submitted
+passForm.addEventListener('submit', async (event) => {
+    // Main function that runs when the form is submitted
+passForm.addEventListener('submit', (event) => { // <-- START HERE (Line 333)
+    // --- Start of Corrected Code Block ---
+
+// Function to generate a simple Pass ID (Used by both client and server)
+function generatePassId() {
+    const randomId = Math.floor(1000 + Math.random() * 9000);
+    return `COEP-${randomId}`;
+}
+
+// Function to calculate Validity Date (Used by both client and server)
+function calculateValidityDate(duration) {
+    const currentDate = new Date();
+    const expiryDate = new Date();
+    // More robust way to calculate expiry date (sets to the last day of the final month)
+    expiryDate.setMonth(currentDate.getMonth() + duration + 1, 0); 
+    return `${expiryDate.getDate().toString().padStart(2, '0')}-${(expiryDate.getMonth() + 1).toString().padStart(2, '0')}-${expiryDate.getFullYear()}`;
+}
+
+
+// New/Updated Main function that runs when the form is submitted
+passForm.addEventListener('submit', async (event) => {
+    event.preventDefault(); // Stop the default browser form submission
+
+    const finalEndPoint = endPointInput.value.trim();
+    const finalPrice = passPriceHidden.value;
+    const duration = parseInt(passDurationSelect.value, 10);
+    const passID = generatePassId();
+    const passValid = calculateValidityDate(duration);
+
+    // 1. Validation
+    if (!studentNameInput.value || !startPointInput.value || !finalEndPoint || !document.getElementById('studentPhoto').files.length) {
+        alert('Please fill in your name, select a **Destination Stop**, and upload a photo.');
+        return;
+    }
+    
+    // --- START DATA SUBMISSION (using Fetch/AJAX) ---
+    
+    const formData = new FormData(passForm);
+    formData.append('passIdGenerated', passID);
+    formData.append('passValidityGenerated', passValid);
+
+    // Disable the button to prevent multiple submissions
+    document.getElementById('generateButton').disabled = true;
+    document.getElementById('generateButton').textContent = 'Processing... Please Wait';
+
+    try {
+        const response = await fetch('save.php', {
+            method: 'POST',
+            body: formData, // Sends all form data including the file
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status} - ${response.statusText}`);
+        }
+
+        const result = await response.json(); 
+        
+        if (result.success) {
+            // Server confirmed save, now update the client-side pass
+
+            // 2. Populate the pass
+            passName.textContent = studentNameInput.value;
+            passStartPoint.textContent = startPointInput.value;
+            passEndPoint.textContent = finalEndPoint; 
+            passPhoto.src = photoDataUrl; 
+            
+            // Use the generated values
+            passPriceDisplay.textContent = `₹${finalPrice}`;
+            paymentAmountDisplay.textContent = `₹${finalPrice}`;
+            passId.textContent = passID; 
+            passValidity.textContent = passValid;
+
+            // 3. Show the generated pass and payment section
+            document.querySelector('.form-container').style.display = 'none';
+            passContainer.style.display = 'block';
+            alert(`Success! Pass ID: ${passID}. Data saved to server.`);
+        } else {
+            throw new Error('Server reported an error during data saving.');
+        }
+
+    } catch (error) {
+        console.error('Submission failed:', error);
+        alert(`Failed to save data: ${error.message}. Check the server logs (save.php).`);
+    } finally {
+        // Re-enable the button regardless of success or failure
+        document.getElementById('generateButton').disabled = false;
+        document.getElementById('generateButton').textContent = 'Generate My Bus Pass';
+    }
+});
+// --- End of Corrected Code Block ---
+
+// Initialize the price display on load
+updatePrice();
+    event.preventDefault();
+
+    const finalEndPoint = endPointInput.value.trim();
+    const finalPrice = passPriceHidden.value;
+
+    // 1. Validation
+    // Added check to ensure a destination has been selected
+    if (!studentNameInput.value || !startPointInput.value || !finalEndPoint || !photoDataUrl) {
+        alert('Please fill in your name, select a **Destination Stop**, and upload a photo.');
+        return;
+    }
+
+    // 2. Populate the pass
+    passName.textContent = studentNameInput.value;
+    passStartPoint.textContent = startPointInput.value;
+    passEndPoint.textContent = finalEndPoint; 
+    passPhoto.src = photoDataUrl;
+    
+    // Set price on both the pass and the payment section
+    passPriceDisplay.textContent = `₹${finalPrice}`;
+    paymentAmountDisplay.textContent = `₹${finalPrice}`;
+
+    // 3. Generate Pass ID & Validity Date
+    const randomId = Math.floor(1000 + Math.random() * 9000);
+    passId.textContent = `COEP-${randomId}`;
+
+    const duration = parseInt(passDurationSelect.value, 10);
+    const currentDate = new Date();
+    const expiryDate = new Date();
+    
+    // More robust way to calculate expiry date (sets to the last day of the final month)
+    expiryDate.setMonth(currentDate.getMonth() + duration + 1, 0); 
+    
+    const formattedDate = `${expiryDate.getDate().toString().padStart(2, '0')}-${(expiryDate.getMonth() + 1).toString().padStart(2, '0')}-${expiryDate.getFullYear()}`;
+    passValidity.textContent = formattedDate;
+
+    // 4. Show the generated pass and payment section
+    document.querySelector('.form-container').style.display = 'none';
+    passContainer.style.display = 'block';
+}); // <-- END HERE (Line 368)
+    event.preventDefault(); // Stop the default browser form submission
+
+    const finalEndPoint = endPointInput.value.trim();
+    const finalPrice = passPriceHidden.value;
+    const duration = parseInt(passDurationSelect.value, 10);
+    const passID = generatePassId();
+    const passValid = calculateValidityDate(duration);
+
+    // 1. Validation
+    if (!studentNameInput.value || !startPointInput.value || !finalEndPoint || !document.getElementById('studentPhoto').files.length) {
+        alert('Please fill in your name, select a **Destination Stop**, and upload a photo.');
+        return;
+    }
+    
+    // --- START DATA SUBMISSION (using Fetch/AJAX) ---
+    
+    // Create a new FormData object to package all form fields and the file
+    const formData = new FormData(passForm);
+    // Add the calculated Pass ID and Validity to the data being sent
+    formData.append('passIdGenerated', passID);
+    formData.append('passValidityGenerated', passValid);
+
+    // Disable the button to prevent multiple submissions
+    document.getElementById('generateButton').disabled = true;
+    document.getElementById('generateButton').textContent = 'Processing... Please Wait';
+
+    try {
+        const response = await fetch('save.php', {
+            method: 'POST',
+            body: formData, // Sends all form data including the file
+        });
+
+        // Check if the server responded okay
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status} - ${response.statusText}`);
+        }
+
+        const result = await response.json(); 
+        
+        if (result.success) {
+            // Server confirmed save, now update the client-side pass
+
+            // 2. Populate the pass
+            passName.textContent = studentNameInput.value;
+            passStartPoint.textContent = startPointInput.value;
+            passEndPoint.textContent = finalEndPoint; 
+            
+            // Use the FileReader data for immediate display
+            passPhoto.src = photoDataUrl; 
+            
+            // Use the generated values
+            passPriceDisplay.textContent = `₹${finalPrice}`;
+            paymentAmountDisplay.textContent = `₹${finalPrice}`;
+            passId.textContent = passID; 
+            passValidity.textContent = passValid;
+
+            // 3. Show the generated pass and payment section
+            document.querySelector('.form-container').style.display = 'none';
+            passContainer.style.display = 'block';
+            alert(`Success! Pass ID: ${passID}. Data saved to server.`);
+        } else {
+            throw new Error('Server reported an error during data saving.');
+        }
+
+    } catch (error) {
+        console.error('Submission failed:', error);
+        alert(`Failed to save data: ${error.message}. Check the server logs (save.php).`);
+    } finally {
+        // Re-enable the button regardless of success or failure
+        document.getElementById('generateButton').disabled = false;
+        document.getElementById('generateButton').textContent = 'Generate My Bus Pass';
+    }
+});
+// --- End of Replacement Code Block ---
+            event.preventDefault();
+
+            const finalEndPoint = endPointInput.value.trim();
+            const finalPrice = passPriceHidden.value;
+
+            // 1. Validation
+            // Added check to ensure a destination has been selected
+            if (!studentNameInput.value || !startPointInput.value || !finalEndPoint || !photoDataUrl) {
+                alert('Please fill in your name, select a **Destination Stop**, and upload a photo.');
+                return;
+            }
+
+            // 2. Populate the pass
+            passName.textContent = studentNameInput.value;
+            passStartPoint.textContent = startPointInput.value;
+            passEndPoint.textContent = finalEndPoint; 
+            passPhoto.src = photoDataUrl;
+            
+            // Set price on both the pass and the payment section
+            passPriceDisplay.textContent = `₹${finalPrice}`;
+            paymentAmountDisplay.textContent = `₹${finalPrice}`;
+
+            // 3. Generate Pass ID & Validity Date
+            const randomId = Math.floor(1000 + Math.random() * 9000);
+            passId.textContent = `COEP-${randomId}`;
+
+            const duration = parseInt(passDurationSelect.value, 10);
+            const currentDate = new Date();
+            const expiryDate = new Date();
+            
+            // More robust way to calculate expiry date (sets to the last day of the final month)
+            expiryDate.setMonth(currentDate.getMonth() + duration + 1, 0); 
+            
+            const formattedDate = `${expiryDate.getDate().toString().padStart(2, '0')}-${(expiryDate.getMonth() + 1).toString().padStart(2, '0')}-${expiryDate.getFullYear()}`;
+            passValidity.textContent = formattedDate;
+
+            // 4. Show the generated pass and payment section
+            document.querySelector('.form-container').style.display = 'none';
+            passContainer.style.display = 'block';
+        });
+        
+        // Initialize the price display on load
+        updatePrice();
+
+    </script>
+
+    <script async defer
+        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAtPMPCBRriWL4dkVE2Psb7rkM-kcJMAbE&callback=initMap">
+    </script>
+</body>
+</html>
